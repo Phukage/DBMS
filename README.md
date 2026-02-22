@@ -22,7 +22,6 @@ This repository is a graph database project built with Neo4j:
 
 This repository demonstrates graph database applications using Neo4j, including:
 - Vector embeddings for multimodal search (images + text)
-- Complex relationship modeling for sports analytics
 - Storing and querying text and image data
 - MinIO object storage integration for medical images
 
@@ -78,7 +77,7 @@ RETURN p.clinician_note AS clinician_note,
 MATCH (p:PATIENT {patient_id: $patient_id})-[:HAS_IMAGE]->(i:IMAGE:T2:SAG {instance_uid: $instance_uid})
 CALL db.index.vector.queryNodes("image_embedding_index", $limit, i.image_embedding)
 YIELD node AS img, score
-RETURN img, score;
+RETURN img.image_link AS images, score;
 ```
 
 ### Embedding Models
@@ -211,8 +210,9 @@ jupyter notebook text_dataset_explore.ipynb
 ├── import_data.py                  # Medical data ingestion
 ├── push_data_into_minio.py        # MinIO upload script
 ├── query.py                        # Sample Cypher queries
-├── image_dataset_explore.ipynb    # Image data exploration
-├── text_dataset_explore.ipynb     # Text data exploration
+├── explore/                       
+    ├── image_dataset_explore.ipynb    # Image data exploration
+    └── text_dataset_explore.ipynb     # Text data exploration  
 ├── _env                            # Environment configuration template
 └── dataset/                        # Data directory (not in repo)
     ├── 01_MRI_Data/               # DICOM images
@@ -246,10 +246,8 @@ jupyter notebook text_dataset_explore.ipynb
 
 ---
 
-## Performance Notes
 
 ### Medical Imaging System
-- Embedding generation: ~1-2 seconds per image on CPU, ~0.1s on GPU
 - Batch size: 1000 records per transaction
 - Vector dimensions: 512
 - Processed data is cached as Parquet files for faster re-runs
@@ -280,9 +278,9 @@ jupyter notebook text_dataset_explore.ipynb
 
 ## License
 
-This project is provided as-is for educational and research purposes.
+<!-- This project is provided as-is for educational and research purposes.
 
-**Note**: Medical data handling should comply with HIPAA, GDPR, and other relevant regulations. The football data is sourced from public datasets.
+**Note**: Medical data handling should comply with HIPAA, GDPR, and other relevant regulations. The football data is sourced from public datasets. -->
 
 ---
 
