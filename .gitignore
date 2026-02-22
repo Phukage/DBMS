@@ -1,0 +1,187 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environments
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+.venv/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+*.ipynb_checkpoints/
+
+# PyCharm
+.idea/
+*.iml
+*.iws
+.idea_modules/
+
+# VS Code
+.vscode/
+*.code-workspace
+
+# Environment Variables
+.env
+.env.local
+.env.*.local
+_env
+
+# Datasets and Data Files
+dataset/
+data/
+*.csv
+*.xlsx
+*.xls
+*.parquet
+*.feather
+*.hdf5
+*.h5
+
+# Medical Imaging Files
+*.dcm
+*.dicom
+*.ima
+*.IMA
+
+# Processed/Cached Data
+processed_data/
+cache/
+*.pkl
+*.pickle
+*.joblib
+
+# Model Checkpoints and Weights
+*.pth
+*.pt
+*.ckpt
+*.safetensors
+models/
+checkpoints/
+
+# PyTorch
+*.pt
+*.pth
+
+# Logs
+logs/
+*.log
+*.out
+*.err
+
+# OS Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+
+# Temporary Files
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+
+# Neo4j
+.neo4j/
+neo4j/
+*.db
+
+# MinIO/S3
+.minio/
+minio-data/
+
+# Credentials and Secrets
+credentials.json
+secrets.yaml
+*.key
+*.pem
+*.crt
+
+# Test Coverage
+htmlcov/
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+
+# Documentation
+docs/_build/
+site/
+
+# Distribution / Packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# MyPy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre
+.pyre/
+
+# Large Files (adjust size as needed)
+*.zip
+*.tar.gz
+*.rar
+*.7z
+
+# Backup Files
+*.bak
+*.backup
+*.old
+
+# Database dumps
+*.sql
+*.dump
+
+# Project Specific
+# Add any project-specific files or directories here
