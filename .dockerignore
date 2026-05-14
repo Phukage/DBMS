@@ -1,0 +1,59 @@
+# Build-context exclusions for the `loader` image.
+# The dataset is volume-mounted at runtime — keep it OUT of the build context
+# or every rebuild ships gigabytes of DICOMs to the daemon.
+
+.git
+.gitignore
+.dockerignore
+.env
+.env.local
+.env.*.local
+_env
+
+# Datasets and cached artefacts (volume-mounted at runtime).
+dataset/
+data/
+*.parquet
+*.feather
+*.hdf5
+*.h5
+*.dcm
+*.dicom
+*.ima
+*.IMA
+
+# Python build artefacts.
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+*.egg-info/
+
+# Virtual envs.
+venv/
+env/
+ENV/
+.venv/
+
+# Notebooks + their checkpoints aren't needed by the loader.
+*.ipynb
+.ipynb_checkpoints/
+explore/
+
+# Editor / OS noise.
+.vscode/
+.idea/
+.DS_Store
+
+# Model checkpoints (we use HF cache via a named volume, not the build context).
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+models/
+checkpoints/
+
+# Logs.
+*.log
+logs/

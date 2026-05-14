@@ -59,8 +59,103 @@ A multimodal Retrieval-Augmented Generation (RAG) system for lumbar spine MRI da
 - `import_data.py`: Main data ingestion pipeline for patients and images
 - `push_data_into_minio.py`: Uploads DICOM images to MinIO object storage
 - `query.py`: Sample Cypher queries for retrieval
+- `transaction_demo.py`: Walks through Neo4j transaction-control patterns (auto-commit, explicit commit/rollback, managed read/write, batched `CALL ... IN TRANSACTIONS`, timeouts/metadata, in-flight visibility, concurrent same-node lock contention, concurrent disjoint-node parallelism). Prints a live `SHOW TRANSACTIONS` panel at each interesting checkpoint, and runs an extra read-only block against the real ingested data when present.
+- `loader/`: Dockerfile + entrypoint for the opt-in compose `loader` service that ingests the real dataset inside the compose network.
 - `image_dataset_explore.ipynb`: Exploratory analysis of image dataset
 - `text_dataset_explore.ipynb`: Exploratory analysis of radiologist notes
+
+### Running the transaction demo against a local Neo4j
+
+The repo ships a `docker-compose.yml` that brings up **Neo4j** (query log
+turned all the way up) and **MinIO** (with the `mri-ima` bucket pre-created
+and set public-read) together — so the transaction demo *and* the full
+data ingestion (`push_data_into_minio.py` + `import_data.py`) work against
+the same local stack with no extra setup.
+
+```bash
+docker compose up -d
+```
+
+Point your `.env` at the compose stack:
+
+```env
+NEO4J_URI=bolt://localhost:7687
+NEO4J_USERNAME=neo4j
+NEO4J_PASSWORD=password123
+NEO4J_DATABASE=neo4j
+```
+
+Run the demo and, in other terminals, tail the logs. Each concurrency-demo
+tx is tagged with `tx_label` + `demo_run_id` in its `metaData`, which
+appears verbatim in `query.log` so you can correlate log lines to demo
+steps:
+
+```bash
+# terminal A
+python transaction_demo.py
+
+# terminal B -- every Cypher statement with parameters + tx metadata
+docker compose exec neo4j tail -F /logs/query.log
+
+# terminal C -- lock waits / deadlocks / lifecycle
+docker compose exec neo4j tail -F /logs/debug.log
+```
+
+The demo also prints a live `SHOW TRANSACTIONS` panel at each interesting
+checkpoint (writer staged but not committed, lock contention, parallel
+execution), so you can see in-flight transactions directly without
+leaving the terminal.
+
+#### Loading the real dataset
+
+The repo also ships an opt-in `loader` service that runs both ingestion
+scripts inside the compose network (so it talks to `neo4j:7687` and
+`minio:9000` directly, while still storing host-reachable image URLs).
+It is gated behind the `load` profile so it never runs as part of a plain
+`docker compose up`.
+
+Place your dataset at:
+
+```
+./dataset/01_MRI_Data/...
+./dataset/Radiologists Notes for Lumbar Spine MRI Dataset/Radiologists Report.xlsx
+```
+
+Then run the loader once:
+
+```bash
+docker compose --profile load up loader
+```
+
+First run builds the loader image (pulls the CPU build of PyTorch + 
+`open_clip_torch`) and downloads the BiomedCLIP weights into a named
+`hf-cache` volume; subsequent runs reuse both. Containerised PyTorch on
+Apple Silicon is CPU-only, so for fastest ingestion you can still run
+the scripts directly on the host instead:
+
+```bash
+python push_data_into_minio.py   # uploads DICOM files to MinIO
+python import_data.py            # ingests into Neo4j with embeddings
+```
+
+Both paths produce the same graph — pick whichever you prefer.
+
+#### Demo 11 against the real data
+
+Once the dataset is loaded (by either path), re-running
+`python transaction_demo.py` automatically picks up the real
+`:PATIENT` / `:IMAGE` nodes for a final read-only block: it joins
+`clinician_note` with `image_link`s for a real patient and runs a
+vector-similarity query against the `image_embedding_index`, all inside
+managed `execute_read` transactions. If the database has no real data,
+the block prints a hint and skips itself.
+
+Tear down:
+
+```bash
+docker compose down        # stop, keep volumes (data preserved)
+docker compose down -v     # stop + wipe all volumes (clean slate)
+```
 
 ### Sample Queries
 
@@ -130,23 +225,19 @@ cd <repository-name>
 pip install neo4j pandas python-dotenv tqdm pydicom torch numpy open_clip_torch pillow sentence-transformers minio openpyxl
 ```
 
-3. **Set up MinIO (for medical imaging project)**
+3. **Set up Neo4j + MinIO with the bundled compose file**
+
+The repo ships a `docker-compose.yml` that brings up both Neo4j (with the
+query log fully enabled, used by `transaction_demo.py`) and MinIO (with
+the `mri-ima` bucket pre-created and set public-read) in one command:
+
 ```bash
-# Using Docker
-docker run -p 9000:9000 -p 9001:9001 \
-  -e "MINIO_ROOT_USER=minioadmin" \
-  -e "MINIO_ROOT_PASSWORD=minioadmin" \
-  quay.io/minio/minio server /data --console-address ":9001"
+docker compose up -d
 ```
 
-4. **Set up Neo4j**
-- Create a Neo4j Aura instance, or
-- Run Neo4j locally using Docker:
-```bash
-docker run -p 7474:7474 -p 7687:7687 \
-  -e NEO4J_AUTH=neo4j/password \
-  neo4j:latest
-```
+Alternative: use a managed Neo4j Aura instance and a standalone MinIO of
+your own — in that case just configure the `.env` (next section) to point
+at them.
 
 ---
 

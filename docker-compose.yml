@@ -1,0 +1,144 @@
+# One-shot local environment for the whole project:
+#   - neo4j        : graph DB with query log turned all the way up
+#   - minio        : S3-compatible object store for the DICOM images
+#   - minio-init   : creates the `mri-ima` bucket and makes it public-read
+#                    so `push_data_into_minio.py` + `import_data.py` work
+#                    out of the box.
+#
+# Usage:
+#   docker compose up -d
+#   # follow Neo4j's query log (shows every Cypher stmt + tx metaData):
+#   docker compose exec neo4j tail -F /logs/query.log
+#   # follow Neo4j's debug log (lock waits, deadlocks, lifecycle):
+#   docker compose exec neo4j tail -F /logs/debug.log
+#   # then in another terminal:
+#   python transaction_demo.py
+#
+# Tear down (keeps data):           docker compose down
+# Tear down + wipe all volumes:     docker compose down -v
+#
+# Matching .env for this stack:
+#   NEO4J_URI=bolt://localhost:7687
+#   NEO4J_USERNAME=neo4j
+#   NEO4J_PASSWORD=password123
+#   NEO4J_DATABASE=neo4j
+
+services:
+  neo4j:
+    image: neo4j:5-community
+    container_name: neo4j-demo
+    ports:
+      - "7474:7474"   # HTTP / Browser
+      - "7687:7687"   # Bolt
+    environment:
+      NEO4J_AUTH: neo4j/password123
+
+      # --- Query log: this is the file we watch during the demo ---------
+      # The `metadata` dict you pass via begin_transaction(metadata=...)
+      # shows up here, which is how you correlate log lines to demo steps.
+      NEO4J_db_logs_query_enabled: "INFO"
+      NEO4J_db_logs_query_threshold: "0"
+      NEO4J_db_logs_query_parameter__logging__enabled: "true"
+      NEO4J_db_logs_query_transaction_enabled: "VERBOSE"
+      NEO4J_db_logs_query_obfuscate__literals: "false"
+
+      # Heap / page-cache sized for a laptop; bump if you ingest the full
+      # MRI dataset via import_data.py.
+      NEO4J_server_memory_heap_initial__size: "1G"
+      NEO4J_server_memory_heap_max__size: "2G"
+      NEO4J_server_memory_pagecache_size: "1G"
+
+      # Makes lock-wait deadlocks easier to spot in debug.log.
+      NEO4J_db_lock_acquisition_timeout: "30s"
+    volumes:
+      - neo4j-data:/data
+      - neo4j-logs:/logs
+      - neo4j-plugins:/plugins
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - cypher-shell -u neo4j -p password123 'RETURN 1' || exit 1
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  minio:
+    image: quay.io/minio/minio:latest
+    container_name: minio-demo
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"   # S3 API
+      - "9001:9001"   # Console UI
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - curl -fsS http://localhost:9000/minio/health/live || exit 1
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  # Run-once helper: create the `mri-ima` bucket and make it public-read
+  # so the image_link URLs minted by import_data.py are actually reachable.
+  minio-init:
+    image: quay.io/minio/mc:latest
+    container_name: minio-init
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        mc alias set local http://minio:9000 minioadmin minioadmin &&
+        mc mb --ignore-existing local/mri-ima &&
+        mc anonymous set download local/mri-ima &&
+        echo 'minio bucket mri-ima ready and public-read.'
+    restart: "no"
+
+  # Optional one-shot loader for the REAL dataset.
+  # Only runs when explicitly requested:
+  #     docker compose --profile load up loader
+  # Requirements:
+  #   - ./dataset/01_MRI_Data/...                       (DICOM files)
+  #   - ./dataset/Radiologists Notes.../*.xlsx          (radiologist notes)
+  # First run builds the image (~slow: pulls torch CPU + open_clip).
+  # First run also downloads the BiomedCLIP model into the `hf-cache`
+  # volume, so subsequent runs are much faster.
+  loader:
+    profiles: ["load"]
+    build:
+      context: .
+      dockerfile: loader/Dockerfile
+    container_name: dbms-loader
+    depends_on:
+      neo4j:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
+    environment:
+      NEO4J_URI: bolt://neo4j:7687
+      NEO4J_USERNAME: neo4j
+      NEO4J_PASSWORD: password123
+      NEO4J_DATABASE: neo4j
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+      MINIO_SECURE: "false"
+      # What gets STORED in image_link. Host-reachable, not container-local.
+      MINIO_PUBLIC_BASE: http://localhost:9000
+    volumes:
+      - ./dataset:/app/dataset:ro
+      - hf-cache:/cache/huggingface
+    restart: "no"
+
+volumes:
+  neo4j-data:
+  neo4j-logs:
+  neo4j-plugins:
+  minio-data:
+  hf-cache:

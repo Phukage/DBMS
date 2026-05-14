@@ -1,0 +1,14 @@
+# Runtime deps for push_data_into_minio.py + import_data.py.
+# Shared with loader/Dockerfile so the container can't drift from host runs.
+# torch is pinned to the CPU index URL in the Dockerfile via --index-url.
+neo4j
+python-dotenv
+pandas
+tqdm
+pydicom
+numpy
+pillow
+minio
+openpyxl
+torch
+open_clip_torch
