@@ -51,13 +51,11 @@ services:
       # Makes lock-wait deadlocks easier to spot in debug.log.
       NEO4J_db_lock_acquisition_timeout: "30s"
 
-      # Force frequent checkpoints so the notebook's Demo 2 actually sees
-      # checkpoint events during its 200-write loop, without needing the
-      # enterprise-only `CALL db.checkpoint()` procedure.
-      # Note: `interval.tx` in Neo4j 5 counts *log chunks*, not raw txs --
-      # 1 chunk ~ 4 txs in this workload, so 10 chunks ~ 40 txs per fire.
-      NEO4J_db_checkpoint_interval_tx: "10"        # every ~40 txs
-      NEO4J_db_checkpoint_interval_time: "5s"      # ...or every 5s, whichever first
+      # Force frequent checkpoints so Demo 2 sees several events during
+      # its write loop. `interval.tx` counts log chunks (coarse), so the
+      # time-based threshold is the more reliable lever.
+      NEO4J_db_checkpoint_interval_tx: "1"         # every log chunk
+      NEO4J_db_checkpoint_interval_time: "1s"      # ...or every 1s, whichever first
     volumes:
       - neo4j-data:/data
       - neo4j-logs:/logs
