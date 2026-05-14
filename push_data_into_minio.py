@@ -13,19 +13,11 @@ for root, dirs, files in os.walk(file_path):
 
 print(len(img_files), "files found.")
 
-# Endpoint can be overridden via env so this script works both from the
-# host (defaults to localhost:9000) and from inside the docker-compose
-# `loader` container (minio:9000).
-MINIO_ENDPOINT = os.getenv("MINIO_ENDPOINT", "localhost:9000")
-MINIO_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY", "minioadmin")
-MINIO_SECRET_KEY = os.getenv("MINIO_SECRET_KEY", "minioadmin")
-MINIO_SECURE = os.getenv("MINIO_SECURE", "false").lower() == "true"
-
 client = Minio(
-    MINIO_ENDPOINT,
-    access_key=MINIO_ACCESS_KEY,
-    secret_key=MINIO_SECRET_KEY,
-    secure=MINIO_SECURE,
+    "localhost:9000",
+    access_key="minioadmin",
+    secret_key="minioadmin",
+    secure=False
 )
 
 bucket = "mri-ima"

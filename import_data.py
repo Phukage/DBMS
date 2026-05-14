@@ -16,12 +16,6 @@ NEO4J_URI = os.getenv("NEO4J_URI")
 DB_NAME = "neo4j"
 BATCH_SIZE = 1000
 
-# Public URL prefix for MinIO. The stored `image_link` must be reachable by
-# whoever later opens it (typically the host / a browser), NOT necessarily
-# from inside the container that did the ingestion. So this stays at
-# http://localhost:9000 even when running the loader inside docker-compose.
-MINIO_PUBLIC_BASE = os.getenv("MINIO_PUBLIC_BASE", "http://localhost:9000")
-
 driver = neo4j.GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USERNAME, NEO4J_PASSWORD))
 driver.verify_connectivity()
 print("Connected to Neo4j instance successfully!")
@@ -79,7 +73,7 @@ def get_img_data(processed_data_dir, image_data_path, model=None, preprocess=Non
         ds = pydicom.dcmread(img)
         info_dict = dicom_to_dict(ds)        
         info_dict["patient_id"] = int(img.parts[2])
-        info_dict["image_link"] = f"{MINIO_PUBLIC_BASE}/mri-ima/{img.parts[2]}/{img.parts[-1]}"
+        info_dict["image_link"] = f"http://localhost:9000/mri-ima/{img.parts[2]}/{img.parts[-1]}"
         info_dict["image_embedding"] = compute_image_embedding(ds.pixel_array, model, preprocess)
         img_data.append(info_dict)
     

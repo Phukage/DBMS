@@ -100,45 +100,8 @@ services:
         echo 'minio bucket mri-ima ready and public-read.'
     restart: "no"
 
-  # Optional one-shot loader for the REAL dataset.
-  # Only runs when explicitly requested:
-  #     docker compose --profile load up loader
-  # Requirements:
-  #   - ./dataset/01_MRI_Data/...                       (DICOM files)
-  #   - ./dataset/Radiologists Notes.../*.xlsx          (radiologist notes)
-  # First run builds the image (~slow: pulls torch CPU + open_clip).
-  # First run also downloads the BiomedCLIP model into the `hf-cache`
-  # volume, so subsequent runs are much faster.
-  loader:
-    profiles: ["load"]
-    build:
-      context: .
-      dockerfile: loader/Dockerfile
-    container_name: dbms-loader
-    depends_on:
-      neo4j:
-        condition: service_healthy
-      minio-init:
-        condition: service_completed_successfully
-    environment:
-      NEO4J_URI: bolt://neo4j:7687
-      NEO4J_USERNAME: neo4j
-      NEO4J_PASSWORD: password123
-      NEO4J_DATABASE: neo4j
-      MINIO_ENDPOINT: minio:9000
-      MINIO_ACCESS_KEY: minioadmin
-      MINIO_SECRET_KEY: minioadmin
-      MINIO_SECURE: "false"
-      # What gets STORED in image_link. Host-reachable, not container-local.
-      MINIO_PUBLIC_BASE: http://localhost:9000
-    volumes:
-      - ./dataset:/app/dataset:ro
-      - hf-cache:/cache/huggingface
-    restart: "no"
-
 volumes:
   neo4j-data:
   neo4j-logs:
   neo4j-plugins:
   minio-data:
-  hf-cache:

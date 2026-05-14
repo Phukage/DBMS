@@ -62,6 +62,11 @@ data/
 *.hdf5
 *.h5
 
+# Exception: the committed precomputed subset that ships with the repo so
+# anyone can `python load_subset.py` without re-running the embedding pass.
+!subset/
+!subset/*.parquet
+
 # Medical Imaging Files
 *.dcm
 *.dicom

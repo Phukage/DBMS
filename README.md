@@ -60,7 +60,6 @@ A multimodal Retrieval-Augmented Generation (RAG) system for lumbar spine MRI da
 - `push_data_into_minio.py`: Uploads DICOM images to MinIO object storage
 - `query.py`: Sample Cypher queries for retrieval
 - `transaction_demo.py`: Walks through Neo4j transaction-control patterns (auto-commit, explicit commit/rollback, managed read/write, batched `CALL ... IN TRANSACTIONS`, timeouts/metadata, in-flight visibility, concurrent same-node lock contention, concurrent disjoint-node parallelism). Prints a live `SHOW TRANSACTIONS` panel at each interesting checkpoint, and runs an extra read-only block against the real ingested data when present.
-- `loader/`: Dockerfile + entrypoint for the opt-in compose `loader` service that ingests the real dataset inside the compose network.
 - `image_dataset_explore.ipynb`: Exploratory analysis of image dataset
 - `text_dataset_explore.ipynb`: Exploratory analysis of radiologist notes
 
@@ -108,12 +107,6 @@ leaving the terminal.
 
 #### Loading the real dataset
 
-The repo also ships an opt-in `loader` service that runs both ingestion
-scripts inside the compose network (so it talks to `neo4j:7687` and
-`minio:9000` directly, while still storing host-reachable image URLs).
-It is gated behind the `load` profile so it never runs as part of a plain
-`docker compose up`.
-
 Place your dataset at:
 
 ```
@@ -121,34 +114,23 @@ Place your dataset at:
 ./dataset/Radiologists Notes for Lumbar Spine MRI Dataset/Radiologists Report.xlsx
 ```
 
-Then run the loader once:
-
-```bash
-docker compose --profile load up loader
-```
-
-First run builds the loader image (pulls the CPU build of PyTorch + 
-`open_clip_torch`) and downloads the BiomedCLIP weights into a named
-`hf-cache` volume; subsequent runs reuse both. Containerised PyTorch on
-Apple Silicon is CPU-only, so for fastest ingestion you can still run
-the scripts directly on the host instead:
+Then run the two ingestion scripts on the host (uses your local Python
+env, with MPS/CUDA acceleration if available):
 
 ```bash
 python push_data_into_minio.py   # uploads DICOM files to MinIO
 python import_data.py            # ingests into Neo4j with embeddings
 ```
 
-Both paths produce the same graph — pick whichever you prefer.
-
 #### Demo 11 against the real data
 
-Once the dataset is loaded (by either path), re-running
-`python transaction_demo.py` automatically picks up the real
-`:PATIENT` / `:IMAGE` nodes for a final read-only block: it joins
-`clinician_note` with `image_link`s for a real patient and runs a
-vector-similarity query against the `image_embedding_index`, all inside
-managed `execute_read` transactions. If the database has no real data,
-the block prints a hint and skips itself.
+Once the dataset is loaded, re-running `python transaction_demo.py`
+automatically picks up the real `:PATIENT` / `:IMAGE` nodes for a final
+read-only block: it joins `clinician_note` with `image_link`s for a real
+patient and runs a vector-similarity query against the
+`image_embedding_index`, all inside managed `execute_read` transactions.
+If the database has no real data, the block prints a hint and skips
+itself.
 
 Tear down:
 

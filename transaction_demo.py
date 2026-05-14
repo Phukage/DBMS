@@ -601,9 +601,8 @@ def demo_real_data(driver: neo4j.Driver) -> None:
     n_real = _count_real_patients(driver)
     if n_real == 0:
         step("No real PATIENT nodes found (only :DemoNode patients exist).")
-        step("Skipping. To populate real data, run either:")
-        step("  - docker compose --profile load up loader")
-        step("  - python push_data_into_minio.py && python import_data.py")
+        step("Skipping. To populate real data, run:")
+        step("  python push_data_into_minio.py && python import_data.py")
         return
     step(f"Found {n_real} real :PATIENT nodes (not :DemoNode). Querying...")
 
@@ -663,7 +662,7 @@ def demo_real_data(driver: neo4j.Driver) -> None:
         rec = session.execute_read(pick_patient_with_image)
         if rec is None:
             step("No real patient has linked images yet; only notes are loaded.")
-            step("Run `python import_data.py` (or the loader service) to ingest images.")
+            step("Run `python import_data.py` to ingest images.")
             return
         pid = rec["pid"]
         step(f"Selected real patient_id={pid} ({rec['n_images']} linked images).")
